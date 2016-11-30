@@ -61,7 +61,7 @@ public class RService {
     private boolean doLogin() {
         String params = "mobileNo=" + config.userName + "&password=" + config.userPwd + "&yzm=&isAjax=true";
         String res = send(loginURL, params);
-        logger.info("登录结果：{}",res);
+        logger.info("login result：{}", res);
         return res.matches(".*\"code\":200\\b.*");
     }
 
@@ -98,11 +98,11 @@ public class RService {
         if (!doLogin()) return;
         if (config.verifyCode == 0) {
             if (!doSendVerfiCode()) return;
-            System.out.println("输入验证码继续:");
+            System.out.println("cin the verficode:");
             Scanner scanner = new Scanner(System.in);
             config.verifyCode = scanner.nextInt();
         }
-        System.out.print("开始执行...");
+        System.out.print("running...");
         while (true) {
             if (loadDoctor()) {
                 break;
@@ -130,12 +130,12 @@ public class RService {
         params[13] = "childrenGender=2";
         params[14] = "isAjax=true";
         String res = send(confirmUrl, String.join("&", params));
-        logger.info("预约结果：{}",res);
+        logger.info("order result：{}", res);
     }
 
     private boolean doSendVerfiCode() {
         String res = send(verifyCodeURL, "");
-        logger.info("验证码发送结果：{}",res);
+        logger.info("verficode send result：{}", res);
         return res.matches(".*\"code\":200\\b.*");
     }
 
@@ -150,7 +150,7 @@ public class RService {
             EntityUtils.consume(response.getEntity());
             return responseBody;
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.warn(e.getMessage());
             return "";
         }
     }

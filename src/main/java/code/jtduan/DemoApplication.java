@@ -12,14 +12,14 @@ import org.springframework.context.ApplicationContext;
 @SpringBootApplication
 public class DemoApplication {
 
-	public static void main(String[] args){
-		ApplicationContext ctx;
-		try {
-			ctx = SpringApplication.run(DemoApplication.class, args);
-		}catch (Exception e){
-			LoggerFactory.getLogger(DemoApplication.class).error("找不到配置文件或者配置文件格式错误...");
-			return;
-		}
-		((RService)ctx.getBean(RService.class)).run();
-	}
+    public static void main(String[] args) {
+        ApplicationContext ctx;
+        try {
+            ctx = SpringApplication.run(DemoApplication.class, args);
+        } catch (Exception e) {
+            LoggerFactory.getLogger(DemoApplication.class).error("no avaliable configuare files...");
+            return;
+        }
+        ((RService) ctx.getBean(RService.class)).run();
+    }
 }
