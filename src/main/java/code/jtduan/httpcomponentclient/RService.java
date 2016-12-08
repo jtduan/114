@@ -1,13 +1,16 @@
-package code.jtduan.main;
+package code.jtduan.httpcomponentclient;
 
+import code.jtduan.Config;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.http.client.CookieStore;
 import org.apache.http.client.config.CookieSpecs;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
@@ -19,7 +22,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.util.Scanner;
 
-import static code.jtduan.main.Config.*;
+import static code.jtduan.Config.*;
 
 /**
  * 使用须知：
@@ -36,6 +39,8 @@ import static code.jtduan.main.Config.*;
 public class RService {
 
     private Logger logger = LoggerFactory.getLogger(this.getClass());
+
+    static CookieStore cookieStore = new BasicCookieStore();
 
     @Autowired
     private Config config;

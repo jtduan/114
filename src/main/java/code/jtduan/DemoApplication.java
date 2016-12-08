@@ -1,6 +1,7 @@
 package code.jtduan;
 
-import code.jtduan.main.RService;
+import code.jtduan.httpcomponentclient.RService;
+import code.jtduan.okhttp.OService;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -20,6 +21,7 @@ public class DemoApplication {
             LoggerFactory.getLogger(DemoApplication.class).error("no avaliable configuare files...");
             return;
         }
-        ((RService) ctx.getBean(RService.class)).run();
+//        ((RService) ctx.getBean(RService.class)).run();
+        ((OService) ctx.getBean(OService.class)).run();
     }
 }
