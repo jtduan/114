@@ -1,7 +1,6 @@
 package code.jtduan;
 
-import code.jtduan.httpcomponentclient.RService;
-import code.jtduan.okhttp.OService;
+import code.jtduan.retrofit.TService;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -22,6 +21,7 @@ public class DemoApplication {
             return;
         }
 //        ((RService) ctx.getBean(RService.class)).run();
-        ((OService) ctx.getBean(OService.class)).run();
+//        ((OService) ctx.getBean(OService.class)).run();
+        ((TService) ctx.getBean(TService.class)).run();
     }
 }
