@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.time.LocalTime;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -298,9 +299,9 @@ public class TService {
         }
         String res = sendGet("https://kyfw.12306.cn/otn/modifyUser/initQueryUserInfo", "");
         if (res.contains(realName)) {
-            System.out.println("===session valid===");
+            System.out.println(LocalTime.now() + "===session valid===");
         } else {
-            System.out.println("===session Invalid===");
+            System.out.println(LocalTime.now() + "===session Invalid===");
         }
     }
 
