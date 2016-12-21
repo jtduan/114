@@ -4,11 +4,16 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>code.jtduan</groupId>
-	<artifactId>114</artifactId>
+	<artifactId>autoScript</artifactId>
 	<version>1.0.0</version>
-	<packaging>jar</packaging>
+    <modules>
+        <module>autoticket</module>
+		<module>auto114</module>
+	</modules>
 
-	<name>auto114</name>
+    <packaging>pom</packaging>
+
+	<name>autoScript</name>
 	<description>auto register when using 114</description>
 
 	<parent>

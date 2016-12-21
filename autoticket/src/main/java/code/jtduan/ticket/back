@@ -1,0 +1,25 @@
+//    private String train_no;
+//    private String from_station_telecode;
+//    private String to_station_telecode;
+//                train_no = n.get("train_no").asText();
+//                from_station_telecode = n.get("from_station_telecode").asText();
+//                to_station_telecode = n.get("to_station_telecode").asText();
+
+
+//    public void getQueueCount() {
+//        String url = "https://kyfw.12306.cn/otn/confirmPassenger/getQueueCount";
+//        Map<String, String> params = new TreeMap<>();
+//        params.put("train_date", "Fri Jan 12 2017 00:00:00 GMT+0800");
+//        params.put("train_no", train_no);
+//        params.put("stationTrainCode", train);
+//        params.put("seatType", "O");
+//        params.put("fromStationTelecode", from_station_telecode);
+//        params.put("toStationTelecode", to_station_telecode);
+//        params.put("leftTicket", leftTicketStr);
+//        params.put("purpose_codes", "00");
+//        params.put("train_location", train_location);
+//        params.put("_json_att", "");
+//        params.put("REPEAT_SUBMIT_TOKEN", globalRepeatSubmitToken);
+//        String res = sendPost(url, buildParams(params));
+//        System.out.println(res);
+//    }
