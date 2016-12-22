@@ -260,6 +260,7 @@ public class TService {
         }
     }
 
+    @Deprecated
     private void getQueueCount() {
         SimpleDateFormat sdf = new SimpleDateFormat("E MMM dd yyyy HH:mm:ss 'GMT'Z", Locale.US);
         String url = "https://kyfw.12306.cn/otn/confirmPassenger/getQueueCount";
