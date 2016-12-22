@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.time.LocalTime;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -29,6 +31,10 @@ public class TService {
 
     @Value("${date}")
     public String date;
+
+    @Value("${verifyPic}")
+    public String verifyPic;
+
     /**
      * 程序运行中需要获取的参数
      */
@@ -36,7 +42,9 @@ public class TService {
     private String key_check_isChange = "";
     private String leftTicketStr = "";
 
-    private String train_location;
+    private List<Train> find_trains;
+    private Train cur_train;
+
     private String passengerTicketStr = "";
     private String oldPassengerStr = "";
 
@@ -46,42 +54,45 @@ public class TService {
 
     public boolean inited = false;
 
-    public void run() {
-        if (!inited && !init()) {
-            System.out.println("params has errors,program will exit...");
-            return;
-        }
-        String str = sendGet("https://kyfw.12306.cn/otn/modifyUser/initQueryUserInfo", "");
-        if (!str.contains(realName)) {
-            System.out.println("Login FAILED ,program will exit...");
-            return;
-        }
 
-        while (true) {
+    public void run() {
+        if (!inited) return;
+        LocalTime start = LocalTime.now();
+        System.out.println("[Task start]:" + start);
+        while (LocalTime.now().compareTo(start.plusMinutes(2)) < 0) {
             try {
                 System.out.print(".");
-                String secret = queryTicket();
-                if (secret == null || secret.isEmpty()) continue;
-                System.out.print("find Tickets...");
-                if (!submitOrder(secret)) {
-                    System.out.print("submitOrder failed...");
-                    continue;
-                }
-                if (!checkOrderInfo()) {
-                    System.out.print("checkOrderInfo failed...");
-                    continue;
-                }
-                if (confirmTicket()) {
-                    System.out.println("order success...");
-                    return;
+                if (!queryTicket()) continue;
+                System.out.print("[find Tickets]");
+                for (int j = 0; j < 10; j++) {
+                    for (Train temp : find_trains) {
+                        cur_train = temp;
+                        if (!submitOrder(cur_train.secret)) {
+                            continue;
+                        }
+                        if (!checkOrderInfo()) {
+                            continue;
+                        }
+                        if (confirmTicket()) {
+                            System.out.println("[order success]");
+                        }
+                    }
                 }
             } catch (Exception e) {
-                System.out.println("System error...continue");
+                System.out.println("[System Error]");
             }
         }
     }
 
-    public boolean init() {
+    private void getPassangers() {
+        sendPost("https://kyfw.12306.cn/otn/confirmPassenger/getPassengerDTOs","_json_att=&REPEAT_SUBMIT_TOKEN="+globalRepeatSubmitToken);
+    }
+
+    private void checkUser() {
+        sendPost("https://kyfw.12306.cn/otn/login/checkUser","_json_att=");
+    }
+
+    public synchronized boolean init() {
         System.out.println("===========");
         System.out.println("date:" + date);
         System.out.println("train:" + train);
@@ -90,6 +101,7 @@ public class TService {
         System.out.println("cardId:" + cardId);
         System.out.println("siteType:" + siteType);
         System.out.println("===========");
+        find_trains = new ArrayList<>();
 
         Scanner cin = new Scanner(System.in);
         if (sessionid.isEmpty()) {
@@ -116,10 +128,16 @@ public class TService {
             return false;
         }
         inited = true;
+        if (!keepSession()) {
+            System.out.println("[Not Logined]");
+            System.exit(-1);
+        }
         return true;
     }
 
-    private String queryTicket() {
+    private boolean queryTicket() {
+        find_trains.clear();
+
         Map<String, String> params = new LinkedHashMap<>();
         params.put("leftTicketDTO.train_date", date);
         params.put("leftTicketDTO.from_station", start);
@@ -128,38 +146,53 @@ public class TService {
 
         String url = "https://kyfw.12306.cn/otn/leftTicket/queryA";
         String res = sendGet(url, buildParams(params));
+        if (res.contains("拒绝访问")) {
+            System.out.print("[denied]");
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            return false;
+        }
         ObjectMapper objectMapper = new ObjectMapper();
         JsonNode node;
         try {
             node = objectMapper.readTree(res);
         } catch (IOException e) {
-            if (res.contains("拒绝访问")) System.out.print("denied.");
-            return "";
+            System.out.println("[" + res + "]");
+            return false;
         }
         if (node.get("data") == null) {
-            return "";
+            System.out.println("[" + res + "]");
+            return false;
         }
-        Iterator<JsonNode> it = node.get("data").iterator();
-        while (it.hasNext()) {
-            JsonNode temp = it.next();
+        for (JsonNode temp : node.get("data")) {
             JsonNode n = temp.get("queryLeftNewDTO");
             if (train.contains(n.get("station_train_code").asText()) &&
                     !(("--").equals(n.get(siteTypeStr).asText()) || ("无").equals(n.get(siteTypeStr).asText()))) {
-                train_location = n.get("location_code").asText();
-                return temp.get("secretStr").asText();
+                Train t = new Train();
+                t.secret = temp.get("secretStr").asText();
+                t.train_location = n.get("location_code").asText();
+                t.train_no = n.get("train_no").asText();
+                t.from_station_telecode = n.get("from_station_telecode").asText();
+                t.to_station_telecode = n.get("to_station_telecode").asText();
+                t.from_station_name = n.get("from_station_name").asText();
+                t.to_station_name = n.get("to_station_name").asText();
+                find_trains.add(t);
             }
         }
-        return "";
+        return !find_trains.isEmpty();
     }
 
     private boolean submitOrder(String secret) {
-        Map<String, String> params = new TreeMap<>();
+        Map<String, String> params = new LinkedHashMap<>();
         params.put("secretStr", secret);
         params.put("train_date", date);
         params.put("tour_flag", "dc");
         params.put("purpose_codes", "ADULT");
-        params.put("query_from_station_name", startCity);
-        params.put("query_to_station_name", endCity);
+        params.put("query_from_station_name", cur_train.from_station_name);
+        params.put("query_to_station_name", cur_train.to_station_name);
         String temp = sendPost("https://kyfw.12306.cn/otn/leftTicket/submitOrderRequest", buildParams(params));
 
         ObjectMapper objectMapper = new ObjectMapper();
@@ -171,23 +204,24 @@ public class TService {
                 return false;
             }
         } catch (IOException e) {
+            System.out.println("[submitOrder]:" + temp);
             return false;
         }
 
-        String res = sendPost("https://kyfw.12306.cn/otn/confirmPassenger/initDc", "_json_att=");
-        Pattern p = Pattern.compile("globalRepeatSubmitToken *= *'([0-9%A-Za-z]+)'");
+        String res = sendPost("https://kyfw.12306.cn/otn/confirmPassenger/initDc", "_json_att=", 1);
+        Pattern p = Pattern.compile("globalRepeatSubmitToken {1,3}= {1,3}'(.+?)'");
         Matcher matcher = p.matcher(res);
         if (matcher.find()) {
             globalRepeatSubmitToken = matcher.group(1);
         }
 
-        Pattern p2 = Pattern.compile("'key_check_isChange':'([0-9%A-Za-z]+)'");
+        Pattern p2 = Pattern.compile("'key_check_isChange':'(.+?)'");
         Matcher matcher2 = p2.matcher(res);
         if (matcher2.find()) {
             key_check_isChange = matcher2.group(1);
         }
 
-        Pattern p3 = Pattern.compile("'leftTicketStr':'([0-9%A-Za-z]+)'");
+        Pattern p3 = Pattern.compile("'leftTicketStr':'(.+?)'");
         Matcher matcher3 = p3.matcher(res);
         if (matcher3.find()) {
             leftTicketStr = matcher3.group(1);
@@ -197,36 +231,9 @@ public class TService {
         return true;
     }
 
-    private boolean confirmTicket() {
-        Map<String, String> params = new TreeMap<>();
-        params.put("passengerTicketStr", passengerTicketStr);
-        params.put("oldPassengerStr", oldPassengerStr);
-        params.put("randCode", "");
-        params.put("purpose_codes", "00");
-        params.put("key_check_isChange", key_check_isChange);
-        params.put("leftTicketStr", leftTicketStr);
-        params.put("train_location", train_location);
-        params.put("choose_seats", "");
-        params.put("seatDetailType", "000");
-        params.put("roomType", "00");
-        params.put("dwAll", "N");
-        params.put("_json_att", "");
-        params.put("REPEAT_SUBMIT_TOKEN", globalRepeatSubmitToken);
-        String res = sendPost("https://kyfw.12306.cn/otn/confirmPassenger/confirmSingleForQueue", buildParams(params));
-        System.out.println("results:" + res);
-        ObjectMapper objectMapper = new ObjectMapper();
-        JsonNode node;
-        try {
-            node = objectMapper.readTree(res);
-        } catch (IOException e) {
-            return false;
-        }
-        return node.get("status").asText().equals("true") && node.get("data").get("submitStatus").asText().equals("true");
-    }
-
     private boolean checkOrderInfo() {
         String url = "https://kyfw.12306.cn/otn/confirmPassenger/checkOrderInfo";
-        Map<String, String> params = new TreeMap<>();
+        Map<String, String> params = new LinkedHashMap<>();
         params.put("cancel_flag", "2");
         params.put("bed_level_order_num", "000000000000000000000000000000");
         params.put("passengerTicketStr", passengerTicketStr);
@@ -242,45 +249,103 @@ public class TService {
         try {
             node = objectMapper.readTree(str);
         } catch (IOException e) {
+            System.out.println("[checkOrderInfo]:" + str);
             return false;
         }
         if (node.get("data").get("submitStatus").asText().equals("true")) {
             return true;
         } else {
-            System.out.println(node.get("data").get("errMsg"));
+            System.out.println("[checkOrderInfo]:" + node.get("data").get("errMsg"));
             return false;
         }
     }
 
+    @Deprecated
+    private void getQueueCount() {
+        SimpleDateFormat sdf = new SimpleDateFormat("E MMM dd yyyy HH:mm:ss 'GMT'Z", Locale.US);
+        String url = "https://kyfw.12306.cn/otn/confirmPassenger/getQueueCount";
+        Map<String, String> params = new LinkedHashMap<>();
+
+        try {
+            params.put("train_date", sdf.format(new SimpleDateFormat("yyyy-MM-dd").parse(date)));
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        params.put("train_no", cur_train.train_no);
+        params.put("stationTrainCode", train);
+        params.put("seatType", siteType);
+        params.put("fromStationTelecode", cur_train.from_station_telecode);
+        params.put("toStationTelecode", cur_train.to_station_telecode);
+        params.put("leftTicket", leftTicketStr);
+        params.put("purpose_codes", "00");
+        params.put("train_location", cur_train.train_location);
+        params.put("_json_att", "");
+        params.put("REPEAT_SUBMIT_TOKEN", globalRepeatSubmitToken);
+        String res = sendPost(url, buildParams(params));
+        System.out.println("[getQueueCount]" + res);
+    }
+
+    private boolean confirmTicket() {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("passengerTicketStr", passengerTicketStr);
+        params.put("oldPassengerStr", oldPassengerStr);
+        params.put("randCode", "");
+        params.put("purpose_codes", "00");
+        params.put("key_check_isChange", key_check_isChange);
+        params.put("leftTicketStr", leftTicketStr);
+        params.put("train_location", cur_train.train_location);
+        params.put("choose_seats", "");
+        params.put("seatDetailType", "000");
+        params.put("roomType", "00");
+        params.put("dwAll", "N");
+        params.put("_json_att", "");
+        params.put("REPEAT_SUBMIT_TOKEN", globalRepeatSubmitToken);
+        String res = sendPost("https://kyfw.12306.cn/otn/confirmPassenger/confirmSingleForQueue", buildParams(params));
+        System.out.println("[results]:" + res);
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode node;
+        try {
+            node = objectMapper.readTree(res);
+        } catch (IOException e) {
+            return false;
+        }
+        return node.get("status").asText().equals("true") && node.get("data").get("submitStatus").asText().equals("true");
+    }
+
     private String sendPost(String url, String params) {
+        return sendPost(url, params, 2);
+    }
+
+    private String sendPost(String url, String params, int num) {
         RequestBody body = RequestBody.create(MediaType.parse("application/x-www-form-urlencoded; charset=utf-8"), params);
         Request request = new Request.Builder()
                 .url(url).post(body)
                 .build();
 
-        try {
-            Response response = client.newCall(request).execute();
-            return response.body().string();
-        } catch (IOException e) {
-            System.out.println(e.getMessage());
-            return "";
-        }
+        return send(request, num);
     }
 
-    public String sendGet(String url, String params) {
+    private String sendGet(String url, String params) {
         if (!params.isEmpty()) {
             url = url + "?" + params;
         }
         Request request = new Request.Builder()
                 .url(url).get()
                 .build();
+        return send(request, 2);
+    }
 
+    private String send(Request request, int num) {
         try {
             Response response = client.newCall(request).execute();
             return response.body().string();
         } catch (IOException e) {
-            System.out.println(e.getMessage());
-            return "";
+            if (num > 1) {
+                return send(request, num - 1);
+            } else {
+                System.out.println(e.getMessage());
+                return "";
+            }
         }
     }
 
@@ -293,15 +358,31 @@ public class TService {
         return sb.toString();
     }
 
-    public void keepSession() throws InterruptedException {
+    @Deprecated
+    public String getverifyCodeString() {
+        if (verifyPic.isEmpty()) return "";
+        String[] pics = verifyPic.split("[ ,]");
+        StringBuilder sb = new StringBuilder();
+        for (String pic : pics) {
+            int x = 70 * (pic.charAt(0) - '0' - 1) + 35;
+            int y = 70 * (pic.charAt(1) - '0' - 1) + 35;
+            sb.append(y).append(",").append(x).append(",");
+        }
+        sb.deleteCharAt(sb.length() - 1);
+        return sb.toString();
+    }
+
+    private boolean keepSession() {
         if (!inited) {
-            return;
+            return false;
         }
         String res = sendGet("https://kyfw.12306.cn/otn/modifyUser/initQueryUserInfo", "");
         if (res.contains(realName)) {
             System.out.println(LocalTime.now() + "===session valid===");
+            return true;
         } else {
             System.out.println(LocalTime.now() + "===session Invalid===");
+            return false;
         }
     }
 
@@ -309,8 +390,7 @@ public class TService {
 
         private List<Cookie> cookies;
 
-
-        public MyCookieJar(String sessionid, String bigip) {
+        MyCookieJar(String sessionid, String bigip) {
             cookies = new ArrayList<>();
             Cookie cookie = new Cookie.Builder()
                     .name("current_captcha_type").value("Z").domain("kyfw.12306.cn")
@@ -337,5 +417,15 @@ public class TService {
             if (cookies == null) return Collections.emptyList();
             return cookies;
         }
+    }
+
+    class Train {
+        public String train_no;
+        public String from_station_telecode;
+        public String to_station_telecode;
+        public String train_location;
+        public String secret;
+        public String from_station_name;
+        public String to_station_name;
     }
 }

@@ -54,7 +54,7 @@ public class SchedledConfiguration {
     @Bean(name = "sessiontrigger")
     public CronTriggerFactoryBean sessionConf() {
         CronTriggerFactoryBean bean = new CronTriggerFactoryBean();
-        bean.setCronExpression("0 0/3 * * * ?");
+        bean.setCronExpression("0 2/3 * * * ?");
         bean.setName("sessiontrigger");
         bean.setJobDetail(sessionFactoryBean().getObject());
         return bean;
