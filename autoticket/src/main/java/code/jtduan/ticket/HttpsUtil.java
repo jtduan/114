@@ -6,8 +6,6 @@ import okio.Buffer;
 import javax.net.ssl.*;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.InetSocketAddress;
-import java.net.Proxy;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.cert.Certificate;
@@ -53,9 +51,9 @@ public class HttpsUtil {
                     .newBuilder()
                     .sslSocketFactory(sslSocketFactory, trustAllCerts)
 //                    .proxy(new Proxy(Proxy.Type.SOCKS, new InetSocketAddress("127.0.0.1",1080)))
-                    .connectTimeout(3, TimeUnit.SECONDS)
-                    .readTimeout(1,TimeUnit.SECONDS)
-                    .writeTimeout(1,TimeUnit.SECONDS)
+                    .connectTimeout(4, TimeUnit.SECONDS)
+                    .readTimeout(2,TimeUnit.SECONDS)
+                    .writeTimeout(2,TimeUnit.SECONDS)
                     .hostnameVerifier((a,b)->true)
                     .build();
             return okHttpClient;

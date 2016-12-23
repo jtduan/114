@@ -1,0 +1,36 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Getting Started: Serving Web Content</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+</head>
+<body>
+
+<p>登录状态:<span th:text="${logined}"></span></p>
+<p>当前真实姓名:<span th:text="${realName}"></span></p>
+<p>当前身份证号:<span th:text="${cardId}"></span></p>
+
+<div>
+    <form action="#" th:action="@{/user}" method="post">
+        <table>
+            <tr>
+                <td>真实姓名:</td>
+                <td><input type="text" name="realName"/></td>
+            </tr>
+            <tr>
+                <td>身份证:</td>
+                <td><input type="text" name="cardId"/></td>
+            </tr>
+            <tr>
+                <td><button type="submit">更新身份</button></td>
+            </tr>
+        </table>
+    </form>
+</div>
+<a href="/login">第二步：登录</a>
+<br/>
+<a href="/new">刷新cookie(重新登录)</a>
+<br/>
+<a href="/start">点击启动脚本(不建议)</a>
+</body>
+</html>

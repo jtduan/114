@@ -1,0 +1,27 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Getting Started: Serving Web Content</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+</head>
+<body>
+
+<p>登录状态:<span th:text="${logined}"></span></p>
+<p>当前真实姓名:<span th:text="${realName}"></span></p>
+<p>当前身份证号:<span th:text="${cardId}"></span></p>
+
+<form action="#" th:action="@{/verify}" method="post">
+    <img src="/getPic" />
+    <table>
+        <tr>
+            <td>验证码:</td>
+            <td><input type="text" name="verifyCode"/></td>
+        </tr>
+        <tr>
+            <td><button type="submit">登录</button></td>
+        </tr>
+    </table>
+</form>
+
+</body>
+</html>
