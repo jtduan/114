@@ -17,8 +17,7 @@ import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 
 /**
- * @author jtduan
- * @date 2016/12/20
+ * 实现Https访问
  */
 public class HttpsUtil {
     /**

@@ -10,9 +10,8 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Created by djt on 12/24/16.
+ * 模拟请求的封装类
  */
-
 public class OKHttpUtil {
     private static Logger logger = LoggerFactory.getLogger(OKHttpUtil.class);
 

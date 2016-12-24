@@ -1,10 +1,7 @@
 package code.jtduan.ticket;
 
-import code.jtduan.ticket.util.HttpsUtil;
-import code.jtduan.ticket.util.OKHttpUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,7 +17,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static code.jtduan.ticket.TVariables.*;
-import static code.jtduan.ticket.util.OKHttpUtil.*;
+import static code.jtduan.ticket.util.OKHttpUtil.sendGet;
+import static code.jtduan.ticket.util.OKHttpUtil.sendPost;
 
 /**
  * @author jtduan
@@ -70,8 +68,10 @@ public class TService {
 //                .build();
     }
 
+    /**
+     * 抢票 主函数
+     */
     public void run() {
-        int num = 0;
         LocalTime now = LocalTime.now();
         logger.info("[Task start]");
         /**

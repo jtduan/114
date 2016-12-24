@@ -11,7 +11,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
 
 /**
- * 开发环境运行需要将配置文件application.bak.properties改名为application.properties
+ * 主类
+ * 开启定时任务支持和WebSocket支持
  */
 @SpringBootApplication
 @EnableWebSocket
