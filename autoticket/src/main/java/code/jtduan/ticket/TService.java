@@ -1,5 +1,7 @@
 package code.jtduan.ticket;
 
+import code.jtduan.ticket.util.HttpsUtil;
+import code.jtduan.ticket.util.OKHttpUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.*;
@@ -9,15 +11,16 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
 import java.time.LocalTime;
 import java.util.*;
+import java.util.concurrent.locks.LockSupport;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static code.jtduan.ticket.TConfig.*;
+import static code.jtduan.ticket.TVariables.*;
+import static code.jtduan.ticket.util.OKHttpUtil.*;
 
 /**
  * @author jtduan
@@ -25,7 +28,6 @@ import static code.jtduan.ticket.TConfig.*;
  */
 @Service
 public class TService {
-
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
     @Value("${start}")
@@ -44,6 +46,9 @@ public class TService {
     @Value("${password}")
     public String pwd;
 
+    @Value("${sync}")
+    public boolean sync;
+
     /**
      * 程序运行中需要获取的参数
      */
@@ -51,26 +56,35 @@ public class TService {
     private String key_check_isChange = "";
     private String leftTicketStr = "";
 
-    private List<Train> find_trains;
+    private List<Train> find_trains = new ArrayList<>();
     private Train cur_train;
 
-    public OkHttpClient client;
-    public MyCookieJar cookieJar;
-
+//    public OkHttpClient client;
+//    public MyCookieJar cookieJar;
 
     public TService() {
-        find_trains = new ArrayList<>();
-        cookieJar = new MyCookieJar("", "");
-        client = HttpsUtil.getUnsafeOkHttpClient().newBuilder()
-                .cookieJar(cookieJar)
-                .build();
+//        find_trains = new ArrayList<>();
+//        cookieJar = new MyCookieJar();
+//        client = HttpsUtil.getUnsafeOkHttpClient().newBuilder()
+//                .cookieJar(cookieJar)
+//                .build();
     }
 
-    public synchronized void run() {
+    public void run() {
+        int num = 0;
+        LocalTime now = LocalTime.now();
+        logger.info("[Task start]");
+        /**
+         * 初始化
+         */
+        if (!init()) return;
+        autoThread = Thread.currentThread();
         if (cardId == null || cardId.isEmpty()) return;
-        LocalTime start = LocalTime.now();
-        System.out.println("[Task start]:" + start);
-        while (LocalTime.now().compareTo(start.plusMinutes(2)) < 0) {
+
+        /**
+         * 循环3分钟
+         */
+        while (LocalTime.now().compareTo(now.plusMinutes(3)) < 0) {
             try {
                 System.out.print(".");
                 if (!queryTicket()) {
@@ -81,27 +95,47 @@ public class TService {
                 for (Train temp : find_trains) {
                     cur_train = temp;
                     if (!submitOrder(cur_train.secret)) {
+                        System.out.print("[submitOrder:failed]");
                         continue;
                     }
-                    System.out.print("[submitOrder:success]");
                     for (int j = 0; j < 2; j++) {
                         if (!initDc()) {
+                            System.out.print("[initDc:failed]");
                             continue;
                         }
-                        System.out.print("[initDc:success]");
                         if (!checkOrderInfo()) {
                             continue;
-                        }
-                        System.out.print("[checkOrderInfo:success]");
-//                        getQueueCount();
-                        if (confirmTicket()) {
-                            System.out.println("[order success]");
                         }
                     }
                 }
             } catch (Exception e) {
-                System.out.println("[System Error]");
+                logger.error("[System Error]");
             }
+        }
+    }
+
+    /**
+     * 加速程序执行，初始化变量
+     */
+    private boolean init() {
+        try {
+            passengerTicketStr = URLEncoder.encode(siteType + ",0,1," + realName + ",1," + cardId + ",,N", "UTF-8");
+            oldPassengerStr = URLEncoder.encode(realName + ",1," + cardId + ",1_", "UTF-8");
+            seatTypeStr = convert(siteType);
+        } catch (Exception e) {
+            return false;
+        }
+        return true;
+    }
+
+    private String convert(String siteType) {
+        switch (siteType) {
+            case "O":
+                return "ze_num";
+            case "3":
+                return "yw_num";
+            default:
+                throw new UnsupportedOperationException("not valid siteType");
         }
     }
 
@@ -112,44 +146,6 @@ public class TService {
     private void checkUser() {
         sendPost("https://kyfw.12306.cn/otn/login/checkUser", "_json_att=");
     }
-
-//    @Deprecated
-//    public synchronized boolean init() {
-//        System.out.println("===========");
-//        System.out.println("date:" + date);
-//        System.out.println("train:" + train);
-//        System.out.println("start:" + start);
-//        System.out.println("end:" + end);
-//        System.out.println("cardId:" + cardId);
-//        System.out.println("siteType:" + siteType);
-//        System.out.println("===========");
-//        find_trains = new ArrayList<>();
-//
-////        Scanner cin = new Scanner(System.in);
-////        if (sessionid.isEmpty()) {
-////            System.out.println("cin the SessionId:");
-////            sessionid = cin.nextLine();
-////        }
-////        if (bIGipServerotn.isEmpty()) {
-////            System.out.println("cin the bIGipServerotn:");
-////            bIGipServerotn = cin.nextLine();
-////        }
-//        MyCookieJar cookieJar = new MyCookieJar(sessionid, bIGipServerotn);
-//
-//        if (siteType.equals("O")) {
-//            siteTypeStr = "ze_num";
-//        } else if (siteType.equals("3")) {
-//            siteTypeStr = "yw_num";
-//        } else {
-//            System.out.println(" invalid siteType ");
-//            return false;
-//        }
-//        inited = true;
-//        if (!keepSession()) {
-//            System.out.println("[Not Logined]");
-//        }
-//        return true;
-//    }
 
     private boolean queryTicket() {
         find_trains.clear();
@@ -176,7 +172,7 @@ public class TService {
         try {
             node = objectMapper.readTree(res);
         } catch (IOException e) {
-            System.out.println("[" + res + "]");
+            System.out.print("[" + res + "]");
             return false;
         }
         if (node.get("data") == null) {
@@ -185,20 +181,8 @@ public class TService {
         }
         for (JsonNode temp : node.get("data")) {
             JsonNode n = temp.get("queryLeftNewDTO");
-            String siteTypeStr = "";
-            switch (siteType) {
-                case "O":
-                    siteTypeStr = "ze_num";
-                    break;
-                case "3":
-                    siteTypeStr = "yw_num";
-                    break;
-                default:
-                    siteTypeStr = "ze_num";
-                    break;
-            }
             if (train.contains(n.get("station_train_code").asText()) &&
-                    !(("--").equals(n.get(siteTypeStr).asText()) || ("无").equals(n.get(siteTypeStr).asText()))) {
+                    ("有".equals(n.get(seatTypeStr).asText()) || "[0-9]+".matches(n.get(seatTypeStr).asText()))) {
                 Train t = new Train();
                 t.secret = temp.get("secretStr").asText();
                 if (t.secret == null || t.secret.isEmpty()) {
@@ -210,6 +194,7 @@ public class TService {
                 t.to_station_telecode = n.get("to_station_telecode").asText();
                 t.from_station_name = n.get("from_station_name").asText();
                 t.to_station_name = n.get("to_station_name").asText();
+                t.station_train_code = n.get("station_train_code").asText();
                 find_trains.add(t);
             }
         }
@@ -231,11 +216,11 @@ public class TService {
         try {
             node = objectMapper.readTree(temp);
             if (node.get("status").asText().equals("false")) {
-                System.out.println(node.get("messages").get(0).asText());
+                System.out.print(node.get("messages").get(0).asText());
                 return false;
             }
         } catch (IOException e) {
-            System.out.println("[submitOrder]:" + temp);
+            System.out.print("[submitOrder]:" + temp);
             return false;
         }
         return true;
@@ -265,8 +250,7 @@ public class TService {
             leftTicketStr = matcher3.group(1);
         }
 
-        if (key_check_isChange.isEmpty() || globalRepeatSubmitToken.isEmpty() || leftTicketStr.isEmpty()) return false;
-        return true;
+        return !(key_check_isChange.isEmpty() || globalRepeatSubmitToken.isEmpty() || leftTicketStr.isEmpty());
     }
 
     private boolean checkOrderInfo() {
@@ -274,12 +258,8 @@ public class TService {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("cancel_flag", "2");
         params.put("bed_level_order_num", "000000000000000000000000000000");
-        try {
-            params.put("passengerTicketStr", URLEncoder.encode(siteType + ",0,1," + realName + ",1," + cardId + ",,N", "UTF-8"));
-            params.put("oldPassengerStr", URLEncoder.encode(realName + ",1," + cardId + ",1_", "UTF-8"));
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-        }
+        params.put("passengerTicketStr", passengerTicketStr);
+        params.put("oldPassengerStr", oldPassengerStr);
         params.put("tour_flag", "dc");
         params.put("randCode", "");
         params.put("_json_att", "");
@@ -291,16 +271,27 @@ public class TService {
         try {
             node = objectMapper.readTree(str);
         } catch (IOException e) {
-            System.out.println("[checkOrderInfo]:" + str);
+            System.out.print("[checkOrderInfo]:" + str);
             return false;
         }
-        if (node.get("data").get("submitStatus").asText().equals("true")) {
-            return true;
+        JsonNode data = node.get("data");
+        if (data.get("submitStatus").asText().equals("true")) {
+            System.out.print("[checkOrderInfo:success]");
+            getQueueCount();
+            /**
+             * 判断是否需要验证码
+             */
+            if ("N".equals(data.get("ifShowPassCode").asText())) {
+                return confirmTicket(false);
+            } else {
+                return confirmTicketSync();
+            }
         } else {
-            System.out.println("[checkOrderInfo]:" + node.get("data").get("errMsg"));
+            System.out.print("[checkOrderInfo]:" + data.get("errMsg"));
             return false;
         }
     }
+
 
     @Deprecated
     private void getQueueCount() {
@@ -314,7 +305,7 @@ public class TService {
             e.printStackTrace();
         }
         params.put("train_no", cur_train.train_no);
-        params.put("stationTrainCode", train);
+        params.put("stationTrainCode", cur_train.station_train_code);
         params.put("seatType", siteType);
         params.put("fromStationTelecode", cur_train.from_station_telecode);
         params.put("toStationTelecode", cur_train.to_station_telecode);
@@ -324,18 +315,27 @@ public class TService {
         params.put("_json_att", "");
         params.put("REPEAT_SUBMIT_TOKEN", globalRepeatSubmitToken);
         String res = sendPost(url, buildParams(params), 1);
-        System.out.println("[getQueueCount]" + res);
+        logger.debug("[getQueueCount]" + res);
     }
 
-    private boolean confirmTicket() {
+    private boolean confirmTicketSync() {
+        /**
+         * 检测是否允许执行，在Controller里用户输入验证码后释放许可
+         */
+        LockSupport.park();
+        boolean res = confirmTicket(true);
+        /**
+         * 允许获取验证码线程执行
+         */
+        LockSupport.unpark(picThread);
+        return res;
+    }
+
+    private boolean confirmTicket(boolean needverifyCode) {
         Map<String, String> params = new LinkedHashMap<>();
-        try {
-            params.put("passengerTicketStr", URLEncoder.encode(siteType + ",0,1," + realName + ",1," + cardId + ",,N", "UTF-8"));
-            params.put("oldPassengerStr", URLEncoder.encode(realName + ",1," + cardId + ",1_", "UTF-8"));
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-        }
-        params.put("randCode", "");
+        params.put("passengerTicketStr", passengerTicketStr);
+        params.put("oldPassengerStr", oldPassengerStr);
+        params.put("randCode", needverifyCode ? passangerCode : "");
         params.put("purpose_codes", "00");
         params.put("key_check_isChange", key_check_isChange);
         params.put("leftTicketStr", leftTicketStr);
@@ -347,66 +347,28 @@ public class TService {
         params.put("_json_att", "");
         params.put("REPEAT_SUBMIT_TOKEN", globalRepeatSubmitToken);
         String res = sendPost("https://kyfw.12306.cn/otn/confirmPassenger/confirmSingleForQueue", buildParams(params));
-        System.out.println("[results]:" + res);
+        logger.info("[results]:" + res);
         ObjectMapper objectMapper = new ObjectMapper();
         JsonNode node;
         try {
             node = objectMapper.readTree(res);
-        } catch (IOException e) {
+            return node.get("status").asText().equals("true") && node.get("data").get("submitStatus").asText().equals("true");
+        } catch (Exception e) {
             return false;
         }
-        return node.get("status").asText().equals("true") && node.get("data").get("submitStatus").asText().equals("true");
     }
 
     public void login() {
         Map<String, String> params1 = new LinkedHashMap<>();
-        params1.put("randCode", getverifyCodeString());
+        params1.put("randCode", getverifyCodeString(verifyPic));
         params1.put("rand", "sjrand");
         String res1 = sendPost("https://kyfw.12306.cn/otn/passcodeNew/checkRandCodeAnsyn", buildParams(params1));
-        System.out.println(res1);
+        logger.info(res1);
         Map<String, String> params = new LinkedHashMap<>();
         params.put("loginUserDTO.user_name", userName);
         params.put("userDTO.password", pwd);
-        params.put("randCode", getverifyCodeString());
+        params.put("randCode", getverifyCodeString(verifyPic));
         sendPost("https://kyfw.12306.cn/otn/login/loginAysnSuggest", buildParams(params), 3);
-    }
-
-    private String sendPost(String url, String params) {
-        return sendPost(url, params, 2);
-    }
-
-    private String sendPost(String url, String params, int num) {
-        logger.info(url + ":" + params);
-        RequestBody body = RequestBody.create(MediaType.parse("application/x-www-form-urlencoded; charset=utf-8"), params);
-        Request request = new Request.Builder()
-                .url(url).post(body)
-                .build();
-
-        return send(request, num);
-    }
-
-    private String sendGet(String url, String params) {
-        if (!params.isEmpty()) {
-            url = url + "?" + params;
-        }
-        Request request = new Request.Builder()
-                .url(url).get()
-                .build();
-        return send(request, 2);
-    }
-
-    private String send(Request request, int num) {
-        try {
-            Response response = client.newCall(request).execute();
-            return response.body().string();
-        } catch (IOException e) {
-            if (num > 1) {
-                return send(request, num - 1);
-            } else {
-                System.out.println(e.getMessage());
-                return "";
-            }
-        }
     }
 
     private String buildParams(Map<String, String> map) {
@@ -419,9 +381,9 @@ public class TService {
     }
 
     @Deprecated
-    public String getverifyCodeString() {
-        if (verifyPic.isEmpty()) return "";
-        String[] pics = verifyPic.split("[ ,]");
+    public String getverifyCodeString(String code) {
+        if (code.isEmpty()) return "";
+        String[] pics = code.split("[ ,]");
         StringBuilder sb = new StringBuilder();
         for (String pic : pics) {
             int x = 70 * (pic.charAt(0) - '0' - 1) + 35;
@@ -434,53 +396,78 @@ public class TService {
 
     public boolean keepSession() {
         String res = sendGet("https://kyfw.12306.cn/otn/modifyUser/initQueryUserInfo", "");
-        if (res.contains(realName)) {
-            System.out.println(LocalTime.now() + "===session valid===");
+        if (res.contains("退出")) {
+            logger.info("===session valid===");
             return true;
         } else {
-            System.out.println(LocalTime.now() + "===session Invalid===");
+            logger.info("===session Invalid===");
             return false;
         }
     }
 
-    public void clearCookie() {
-        client = client.newBuilder().cookieJar(new MyCookieJar("", "")).build();
-    }
-
-    private class MyCookieJar implements CookieJar {
-
-        private List<Cookie> cookies;
-
-        MyCookieJar(String sessionid, String bigip) {
-            cookies = new ArrayList<>();
-//            Cookie cookie = new Cookie.Builder()
-//                    .name("current_captcha_type").value("Z").domain("kyfw.12306.cn")
-//                    .build();
-//            Cookie cookie2 = new Cookie.Builder()
-//                    .name("JSESSIONID").value(sessionid).domain("kyfw.12306.cn").path("/otn")
-//                    .build();
+//    private String sendPost(String url, String params) {
+//        return sendPost(url, params, 2);
+//    }
 //
-//            Cookie cookie3 = new Cookie.Builder()
-//                    .name("BIGipServerotn").value(bigip).domain("kyfw.12306.cn")
-//                    .build();
+//    private String sendPost(String url, String params, int num) {
+//        logger.info(url + ":" + params);
+//        RequestBody body = RequestBody.create(MediaType.parse("application/x-www-form-urlencoded; charset=utf-8"), params);
+//        Request request = new Request.Builder()
+//                .url(url).post(body)
+//                .build();
 //
-//            this.cookies.add(cookie);
-//            this.cookies.add(cookie2);
-//            this.cookies.add(cookie3);
-        }
+//        return send(request, num);
+//    }
+//
+//    private String sendGet(String url, String params) {
+//        if (!params.isEmpty()) {
+//            url = url + "?" + params;
+//        }
+//        Request request = new Request.Builder()
+//                .url(url).get()
+//                .build();
+//        return send(request, 2);
+//    }
+//
+//    private String send(Request request, int num) {
+//        try {
+//            Response response = client.newCall(request).execute();
+//            return response.body().string();
+//        } catch (IOException e) {
+//            if (num > 1) {
+//                return send(request, num - 1);
+//            } else {
+//                logger.debug(e.getMessage());
+//                return "";
+//            }
+//        }
+//    }
+//
 
-        @Override
-        public void saveFromResponse(HttpUrl httpUrl, List<Cookie> list) {
-            this.cookies.addAll(list);
-        }
-
-        @Override
-        public List<Cookie> loadForRequest(HttpUrl httpUrl) {
-            if (cookies == null) return Collections.emptyList();
-            return cookies;
-        }
-
-    }
+//    public void clearCookie() {
+//        client = client.newBuilder().cookieJar(new MyCookieJar()).build();
+//    }
+//
+//    private class MyCookieJar implements CookieJar {
+//
+//        private List<Cookie> cookies;
+//
+//        MyCookieJar() {
+//            cookies = new ArrayList<>();
+//        }
+//
+//        @Override
+//        public void saveFromResponse(HttpUrl httpUrl, List<Cookie> list) {
+//            this.cookies.addAll(list);
+//        }
+//
+//        @Override
+//        public List<Cookie> loadForRequest(HttpUrl httpUrl) {
+//            if (cookies == null) return Collections.emptyList();
+//            return cookies;
+//        }
+//
+//    }
 
     class Train {
         public String train_no;
@@ -490,5 +477,6 @@ public class TService {
         public String secret;
         public String from_station_name;
         public String to_station_name;
+        public String station_train_code;
     }
 }

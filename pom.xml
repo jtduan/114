@@ -5,7 +5,7 @@
 
 	<groupId>code.jtduan</groupId>
 	<artifactId>autoScript</artifactId>
-	<version>1.0.0</version>
+	<version>3.0.0</version>
     <modules>
         <module>autoticket</module>
 		<module>auto114</module>

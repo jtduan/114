@@ -1,4 +1,4 @@
-package code.jtduan.ticket;
+package code.jtduan.ticket.util;
 
 import okhttp3.OkHttpClient;
 import okio.Buffer;
@@ -21,6 +21,10 @@ import java.util.concurrent.TimeUnit;
  * @date 2016/12/20
  */
 public class HttpsUtil {
+    /**
+     * 方式一
+     * @return
+     */
     public static OkHttpClient getUnsafeOkHttpClient() {
 
         try {
@@ -64,6 +68,11 @@ public class HttpsUtil {
 
     }
 
+    /**
+     * 方式二
+     * @return
+     */
+    @Deprecated
     public static OkHttpClient getValidOkHttpClient(){
         X509TrustManager trustManager;
         SSLSocketFactory sslSocketFactory;
