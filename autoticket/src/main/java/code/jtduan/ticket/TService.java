@@ -44,9 +44,6 @@ public class TService {
     @Value("${password}")
     public String pwd;
 
-    @Value("${sync}")
-    public boolean sync;
-
     /**
      * 程序运行中需要获取的参数
      */
@@ -84,12 +81,17 @@ public class TService {
         /**
          * 循环3分钟
          */
+//        while(true){
         while (LocalTime.now().compareTo(now.plusMinutes(3)) < 0) {
             try {
                 System.out.print(".");
-                if (!queryTicket()) {
-                    Thread.sleep(400);
-                    continue;
+                try {
+                    if (!queryTicket()) {
+                        Thread.sleep(500);
+                        continue;
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
                 System.out.print("[find Tickets]");
                 for (Train temp : find_trains) {
@@ -98,7 +100,7 @@ public class TService {
                         System.out.print("[submitOrder:failed]");
                         continue;
                     }
-                    for (int j = 0; j < 2; j++) {
+                    for (int j = 0; j < 5; j++) {
                         if (!initDc()) {
                             System.out.print("[initDc:failed]");
                             continue;
@@ -109,6 +111,7 @@ public class TService {
                     }
                 }
             } catch (Exception e) {
+                e.printStackTrace();
                 logger.error("[System Error]");
             }
         }
@@ -117,6 +120,7 @@ public class TService {
     /**
      * 加速程序执行，初始化变量
      */
+
     private boolean init() {
         try {
             passengerTicketStr = URLEncoder.encode(siteType + ",0,1," + realName + ",1," + cardId + ",,N", "UTF-8");
@@ -175,14 +179,15 @@ public class TService {
             System.out.print("[" + res + "]");
             return false;
         }
-        if (node.get("data") == null) {
-            System.out.println("[" + res + "]");
+        if (node.withArray("data") == null) {
             return false;
         }
-        for (JsonNode temp : node.get("data")) {
+        JsonNode data = node.withArray("data");
+        for (int i = data.size() - 1; i >= 0; i--) {
+            JsonNode temp = node.withArray("data").get(i);
             JsonNode n = temp.get("queryLeftNewDTO");
             if (train.contains(n.get("station_train_code").asText()) &&
-                    ("有".equals(n.get(seatTypeStr).asText()) || "[0-9]+".matches(n.get(seatTypeStr).asText()))) {
+                    ("有".equals(n.get(seatTypeStr).asText()) || (n.get(seatTypeStr).asText()).matches("[0-9]+"))) {
                 Train t = new Train();
                 t.secret = temp.get("secretStr").asText();
                 if (t.secret == null || t.secret.isEmpty()) {

@@ -54,8 +54,8 @@ public class HttpsUtil {
                     .newBuilder()
                     .sslSocketFactory(sslSocketFactory, trustAllCerts)
 //                    .proxy(new Proxy(Proxy.Type.SOCKS, new InetSocketAddress("127.0.0.1",1080)))
-                    .connectTimeout(4, TimeUnit.SECONDS)
-                    .readTimeout(2,TimeUnit.SECONDS)
+                    .connectTimeout(3, TimeUnit.SECONDS)
+                    .readTimeout(5,TimeUnit.SECONDS)
                     .writeTimeout(2,TimeUnit.SECONDS)
                     .hostnameVerifier((a,b)->true)
                     .build();
