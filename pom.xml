@@ -57,6 +57,13 @@
 			<artifactId>okhttp</artifactId>
 			<version>3.5.0</version>
 		</dependency>
+		<!-- https://mvnrepository.com/artifact/com.squareup.okhttp3/okhttp-urlconnection -->
+		<dependency>
+			<groupId>com.squareup.okhttp3</groupId>
+			<artifactId>okhttp-urlconnection</artifactId>
+			<version>3.5.0</version>
+		</dependency>
+
 	</dependencies>
 
 	<build>

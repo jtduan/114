@@ -87,7 +87,7 @@ public class TService {
                 System.out.print(".");
                 try {
                     if (!queryTicket()) {
-                        Thread.sleep(500);
+                        Thread.sleep(400);
                         continue;
                     }
                 } catch (Exception e) {
@@ -138,6 +138,10 @@ public class TService {
                 return "ze_num";
             case "3":
                 return "yw_num";
+            case "4":
+                return "rw_num";
+            case "0":
+                return "wz_num";
             default:
                 throw new UnsupportedOperationException("not valid siteType");
         }
@@ -183,26 +187,28 @@ public class TService {
             return false;
         }
         JsonNode data = node.withArray("data");
-        for (int i = data.size() - 1; i >= 0; i--) {
+        for (int i = 0; i < data.size(); i++) {
             JsonNode temp = node.withArray("data").get(i);
             JsonNode n = temp.get("queryLeftNewDTO");
-            if (train.contains(n.get("station_train_code").asText()) &&
-                    ("有".equals(n.get(seatTypeStr).asText()) || (n.get(seatTypeStr).asText()).matches("[0-9]+"))) {
-                Train t = new Train();
-                t.secret = temp.get("secretStr").asText();
-                if (t.secret == null || t.secret.isEmpty()) {
-                    continue;
+            if (train.contains(n.get("station_train_code").asText())) {
+                if ((n.get(seatTypeStr).asText()).matches("[0-9有]+")) {
+                    Train t = new Train();
+                    t.secret = temp.get("secretStr").asText();
+                    if (t.secret == null || t.secret.isEmpty()) {
+                        continue;
+                    }
+                    t.train_location = n.get("location_code").asText();
+                    t.train_no = n.get("train_no").asText();
+                    t.from_station_telecode = n.get("from_station_telecode").asText();
+                    t.to_station_telecode = n.get("to_station_telecode").asText();
+                    t.from_station_name = n.get("from_station_name").asText();
+                    t.to_station_name = n.get("to_station_name").asText();
+                    t.station_train_code = n.get("station_train_code").asText();
+                    find_trains.add(t);
                 }
-                t.train_location = n.get("location_code").asText();
-                t.train_no = n.get("train_no").asText();
-                t.from_station_telecode = n.get("from_station_telecode").asText();
-                t.to_station_telecode = n.get("to_station_telecode").asText();
-                t.from_station_name = n.get("from_station_name").asText();
-                t.to_station_name = n.get("to_station_name").asText();
-                t.station_train_code = n.get("station_train_code").asText();
-                find_trains.add(t);
             }
         }
+
         return !find_trains.isEmpty();
     }
 

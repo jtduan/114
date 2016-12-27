@@ -5,6 +5,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.CookieManager;
+import java.net.CookiePolicy;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -15,10 +17,17 @@ import java.util.List;
 public class OKHttpUtil {
     private static Logger logger = LoggerFactory.getLogger(OKHttpUtil.class);
 
-    public static OkHttpClient client = HttpsUtil.getUnsafeOkHttpClient().newBuilder().cookieJar(new MyCookieJar()).build();
+    public static OkHttpClient client;
+    static {
+        CookieManager cookieManager = new CookieManager();
+        cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
+        client = HttpsUtil.getUnsafeOkHttpClient().newBuilder().cookieJar(new JavaNetCookieJar(cookieManager)).build();
+    }
 
     public static void clearCookie() {
-        client = HttpsUtil.getUnsafeOkHttpClient().newBuilder().cookieJar(new MyCookieJar()).build();
+        CookieManager cookieManager = new CookieManager();
+        cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
+        client = HttpsUtil.getUnsafeOkHttpClient().newBuilder().cookieJar(new JavaNetCookieJar(cookieManager)).build();
     }
 
 
@@ -64,36 +73,36 @@ public class OKHttpUtil {
         Request request = new Request.Builder()
                 .url(url).get()
                 .build();
-        try{
+        try {
             return client.newCall(request).execute().body().bytes();
         } catch (IOException e) {
             if (times > 1) {
                 return getAndResponse(url, times - 1);
-            }else{
+            } else {
                 logger.debug(e.getMessage());
                 return new byte[0];
             }
         }
     }
-
-    static class MyCookieJar implements CookieJar {
-
-        private List<Cookie> cookies;
-
-        MyCookieJar() {
-            cookies = new ArrayList<>();
-        }
-
-        @Override
-        public void saveFromResponse(HttpUrl httpUrl, List<Cookie> list) {
-            this.cookies.addAll(list);
-        }
-
-        @Override
-        public List<Cookie> loadForRequest(HttpUrl httpUrl) {
-            if (cookies == null) return Collections.emptyList();
-            return cookies;
-        }
-
-    }
+//
+//    static class MyCookieJar implements CookieJar {
+//
+//        private List<Cookie> cookies;
+//
+//        MyCookieJar() {
+//            cookies = new ArrayList<>();
+//        }
+//
+//        @Override
+//        public void saveFromResponse(HttpUrl httpUrl, List<Cookie> list) {
+//            this.cookies.addAll(list);
+//        }
+//
+//        @Override
+//        public List<Cookie> loadForRequest(HttpUrl httpUrl) {
+//            if (cookies == null) return Collections.emptyList();
+//            return cookies;
+//        }
+//
+//    }
 }
