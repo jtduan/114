@@ -123,7 +123,7 @@ public class OService {
             }
             System.out.print(".");
         }
-        doPreOrder();
+//        doPreOrder();
         doOrder();
     }
 
