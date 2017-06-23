@@ -7,6 +7,7 @@ import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.TreeMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,7 +63,6 @@ public class OService {
                                 .addHeader("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
                                 .addHeader("Host","www.bjguahao.gov.cn")
                                 .addHeader("Origin", "http://www.bjguahao.gov.cn")
-                                .addHeader("Referer", "http://www.bjguahao.gov.cn")
                                 .addHeader("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36")
                                 .addHeader("Accept", "*/*")
                                 .build();
@@ -109,13 +109,13 @@ public class OService {
 
     public void run() {
         if (!doLogin()) return;
-
         if (config.verifyCode == null) {
             if (!doSendVerfiCode()) return;
             System.out.println("cin the verficode:");
             Scanner scanner = new Scanner(System.in);
             config.verifyCode = scanner.nextInt();
         }
+
         System.out.print("running...");
         while (true) {
             if (loadDoctor()) {
@@ -123,7 +123,7 @@ public class OService {
             }
             System.out.print(".");
         }
-//        doPreOrder();
+        doPreOrder();
         doOrder();
     }
 
@@ -137,12 +137,12 @@ public class OService {
     }
 
     private void doOrder() {
-//        Map<String, String> headers = new TreeMap<>();
-//        detailUrl = detailUrl.replace("${hospitalId}", config.hospitalId)
-//                .replace("${departmentId}", config.departmentId)
-//                .replace("${doctorId}", doctorId)
-//                .replace("${dutySourceId}", dutySourceId);
-//        headers.put("Referer", detailUrl);
+        Map<String, String> headers = new TreeMap<>();
+        detailUrl = detailUrl.replace("${hospitalId}", config.hospitalId)
+                .replace("${departmentId}", config.departmentId)
+                .replace("${doctorId}", doctorId)
+                .replace("${dutySourceId}", dutySourceId);
+        headers.put("Referer", detailUrl);
 
         String[] params = new String[11];
         params[0] = "dutySourceId=" + dutySourceId;
@@ -156,19 +156,19 @@ public class OService {
         params[8] = "smsVerifyCode=" + config.verifyCode;
         params[9] = "childrenBirthday=";
         params[10] = "isAjax=true";
-        String res = sendPost(confirmUrl, String.join("&", params), null);
+        String res = sendPost(confirmUrl, String.join("&", params), headers);
         logger.info("order result：{}", res);
     }
 
     private boolean doSendVerfiCode() {
-//        Map<String, String> headers = new TreeMap<>();
+        Map<String, String> headers = new TreeMap<>();
 //        detailUrl = detailUrl.replace("${hospitalId}", config.hospitalId)
 //                .replace("${departmentId}", config.departmentId)
 //                .replace("${doctorId}", doctorId)
 //                .replace("${dutySourceId}", dutySourceId);
-//        headers.put("Referer", "http://www.bjguahao.gov.cn/");
+        headers.put("Referer", "http://www.bjguahao.gov.cn");
 
-        String res = sendPost(verifyCodeURL, "", null);
+        String res = sendPost(verifyCodeURL, "", headers);
         logger.info("verficode send result：{}", res);
         return res.matches(".*\"code\":200\\b.*");
     }
