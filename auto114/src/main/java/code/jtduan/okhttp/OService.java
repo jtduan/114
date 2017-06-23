@@ -1,20 +1,37 @@
 package code.jtduan.okhttp;
 
-import code.jtduan.Config;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import okhttp3.*;
+import java.io.IOException;
+import java.net.CookieManager;
+import java.net.CookiePolicy;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
+import java.util.Map;
+import java.util.Scanner;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
-import java.util.Scanner;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
-import static code.jtduan.Config.*;
+import static code.jtduan.Config.confirmUrl;
+import static code.jtduan.Config.detailUrl;
+import static code.jtduan.Config.doctorId;
+import static code.jtduan.Config.dutySourceId;
+import static code.jtduan.Config.getDoctorURL;
+import static code.jtduan.Config.loginURL;
+import static code.jtduan.Config.verifyCodeURL;
+
+import code.jtduan.Config;
+import okhttp3.Interceptor;
+import okhttp3.JavaNetCookieJar;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 /**
  * @author jtduan
@@ -32,20 +49,39 @@ public class OService {
     @Autowired
     public OService(Config config) {
         this.config = config;
-        MyCookieJar cookieJar = new MyCookieJar();
-        client = new OkHttpClient().newBuilder().cookieJar(cookieJar).build();
+        CookieManager cookieManager = new CookieManager();
+        cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
+        client = new OkHttpClient().newBuilder()
+                .proxy(new Proxy(Proxy.Type.SOCKS, new InetSocketAddress("127.0.0.1", 1080)))
+                .cookieJar(new JavaNetCookieJar(cookieManager))
+                .addInterceptor(new Interceptor() {
+                    @Override
+                    public Response intercept(Chain chain) throws IOException {
+                        Request request = chain.request()
+                                .newBuilder()
+                                .addHeader("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+                                .addHeader("Host","www.bjguahao.gov.cn")
+                                .addHeader("Origin", "http://www.bjguahao.gov.cn")
+                                .addHeader("Referer", "http://www.bjguahao.gov.cn")
+                                .addHeader("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36")
+                                .addHeader("Accept", "*/*")
+                                .build();
+                        return chain.proceed(request);
+                    }
+                })
+                .build();
     }
 
     private boolean doLogin() {
         String params = "mobileNo=" + config.userName + "&password=" + config.userPwd + "&yzm=&isAjax=true";
-        String res = send(loginURL, params);
+        String res = sendPost(loginURL, params, null);
         logger.info("login result：{}", res);
         return res.matches(".*\"code\":200\\b.*");
     }
 
     private boolean loadDoctor() {
         String params = "hospitalId=" + config.hospitalId + "&departmentId=" + config.departmentId + "&dutyCode=" + config.duty + "&dutyDate=" + config.date + "&isAjax=true";
-        String res = send(getDoctorURL, params);
+        String res = sendPost(getDoctorURL, params, null);
         return !res.isEmpty() && buildOrderUrl(res);
     }
 
@@ -73,7 +109,8 @@ public class OService {
 
     public void run() {
         if (!doLogin()) return;
-        if (config.verifyCode == 0) {
+
+        if (config.verifyCode == null) {
             if (!doSendVerfiCode()) return;
             System.out.println("cin the verficode:");
             Scanner scanner = new Scanner(System.in);
@@ -86,11 +123,28 @@ public class OService {
             }
             System.out.print(".");
         }
-        doPreOrder();
+//        doPreOrder();
+        doOrder();
     }
 
     private void doPreOrder() {
-        String[] params = new String[15];
+        detailUrl = detailUrl.replace("${hospitalId}", config.hospitalId)
+                .replace("${departmentId}", config.departmentId)
+                .replace("${doctorId}", doctorId)
+                .replace("${dutySourceId}", dutySourceId);
+        String res = sendGet(detailUrl);
+        System.out.println("doPreOrder finish!");
+    }
+
+    private void doOrder() {
+//        Map<String, String> headers = new TreeMap<>();
+//        detailUrl = detailUrl.replace("${hospitalId}", config.hospitalId)
+//                .replace("${departmentId}", config.departmentId)
+//                .replace("${doctorId}", doctorId)
+//                .replace("${dutySourceId}", dutySourceId);
+//        headers.put("Referer", detailUrl);
+
+        String[] params = new String[11];
         params[0] = "dutySourceId=" + dutySourceId;
         params[1] = "hospitalId=" + config.hospitalId;
         params[2] = "departmentId=" + config.departmentId;
@@ -100,27 +154,35 @@ public class OService {
         params[6] = "medicareCardId=";
         params[7] = "reimbursementType=-1";
         params[8] = "smsVerifyCode=" + config.verifyCode;
-        params[9] = "isFirstTime=2";
-        params[10] = "hasPowerHospitalCard=2";
-        params[11] = "cidType=1";
-        params[12] = "childrenBirthday=";
-        params[13] = "childrenGender=2";
-        params[14] = "isAjax=true";
-        String res = send(confirmUrl, String.join("&", params));
+        params[9] = "childrenBirthday=";
+        params[10] = "isAjax=true";
+        String res = sendPost(confirmUrl, String.join("&", params), null);
         logger.info("order result：{}", res);
     }
 
     private boolean doSendVerfiCode() {
-        String res = send(verifyCodeURL, "");
+//        Map<String, String> headers = new TreeMap<>();
+//        detailUrl = detailUrl.replace("${hospitalId}", config.hospitalId)
+//                .replace("${departmentId}", config.departmentId)
+//                .replace("${doctorId}", doctorId)
+//                .replace("${dutySourceId}", dutySourceId);
+//        headers.put("Referer", "http://www.bjguahao.gov.cn/");
+
+        String res = sendPost(verifyCodeURL, "", null);
         logger.info("verficode send result：{}", res);
         return res.matches(".*\"code\":200\\b.*");
     }
 
-    private String send(String url, String params) {
+    private String sendPost(String url, String params, Map<String, String> headers) {
         RequestBody body = RequestBody.create(MediaType.parse("application/x-www-form-urlencoded"), params);
-        Request request = new Request.Builder()
-                .url(url).post(body)
-                .build();
+        Request.Builder builder = new Request.Builder()
+                .url(url).post(body);
+        if (headers != null) {
+            for (Map.Entry<String, String> entry : headers.entrySet()) {
+                builder.addHeader(entry.getKey(), entry.getValue());
+            }
+        }
+        Request request = builder.build();
 
         try {
             Response response = client.newCall(request).execute();
@@ -130,27 +192,17 @@ public class OService {
             return "";
         }
     }
+    private String sendGet(String url) {
+        Request.Builder builder = new Request.Builder()
+                .url(url).get();
+        Request request = builder.build();
 
-
-    private class MyCookieJar implements CookieJar {
-
-        private List<Cookie> cookies;
-
-        @Override
-        public void saveFromResponse(HttpUrl httpUrl, List<Cookie> list) {
-            cookies = list;
-        }
-
-        /**
-         * 该函数不能返回null(否则会报异常)
-         *
-         * @param httpUrl
-         * @return
-         */
-        @Override
-        public List<Cookie> loadForRequest(HttpUrl httpUrl) {
-            if (cookies == null) return Collections.emptyList();
-            return cookies;
+        try {
+            Response response = client.newCall(request).execute();
+            return response.body().string();
+        } catch (IOException e) {
+            logger.warn(e.getMessage());
+            return "";
         }
     }
 }

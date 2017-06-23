@@ -8,6 +8,7 @@ public class Config {
     public static final String loginURL = "http://www.bjguahao.gov.cn/quicklogin.htm";
     public static final String getDoctorURL = "http://www.bjguahao.gov.cn/dpt/partduty.htm";
     public static final String confirmUrl = "http://www.bjguahao.gov.cn/order/confirm.htm";
+    public static String detailUrl = "http://www.bjguahao.gov.cn/order/confirm/${hospitalId}-${departmentId}-${doctorId}-${dutySourceId}.htm";
     public static final String verifyCodeURL = "http://www.bjguahao.gov.cn/v/sendorder.htm";
 
     public static String doctorId = "";
@@ -16,7 +17,7 @@ public class Config {
     @Value("${name}")
     public String userName;
 
-    @Value("${pwd}")
+    @Value("${password}")
     public String userPwd;
 
     @Value("${date}")

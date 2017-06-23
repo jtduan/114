@@ -3,6 +3,8 @@ package code.jtduan.httpcomponentclient;
 import code.jtduan.Config;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import org.apache.http.HttpHost;
 import org.apache.http.client.CookieStore;
 import org.apache.http.client.config.CookieSpecs;
 import org.apache.http.client.config.RequestConfig;
@@ -50,12 +52,14 @@ public class RService {
 
     private void init() {
 
+//        HttpHost proxy = new HttpHost("127.0.0.1", 1080);
         RequestConfig defaultRequestConfig = RequestConfig.custom()
                 .setCookieSpec(CookieSpecs.DEFAULT)
                 .setExpectContinueEnabled(true)
                 .setSocketTimeout(3000)
                 .setConnectTimeout(1000)
                 .setConnectionRequestTimeout(1000)
+//                .setProxy(proxy)
                 .build();
         httpclient = HttpClients.createDefault();
         localContext = HttpClientContext.create();
@@ -101,7 +105,7 @@ public class RService {
     public void run() {
         init();
         if (!doLogin()) return;
-        if (config.verifyCode == 0) {
+        if (config.verifyCode == null) {
             if (!doSendVerfiCode()) return;
             System.out.println("cin the verficode:");
             Scanner scanner = new Scanner(System.in);
