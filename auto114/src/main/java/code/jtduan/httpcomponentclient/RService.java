@@ -109,7 +109,8 @@ public class RService {
             if (!doSendVerfiCode()) return;
             System.out.println("cin the verficode:");
             Scanner scanner = new Scanner(System.in);
-            config.verifyCode = scanner.nextInt();
+            scanner.nextLine();
+            config.verifyCode = scanner.nextLine();
         }
         System.out.print("running...");
         while (true) {

@@ -36,5 +36,5 @@ public class Config {
     public String patientId;
 
     @Value("${verifyCode}")
-    public Integer verifyCode;
+    public String verifyCode;
 }
